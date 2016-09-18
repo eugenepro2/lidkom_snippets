@@ -1,0 +1,132 @@
+==================== GET INFO FOR PAGE'S FORMS ====================
+<?php
+$referer = $_SERVER["HTTP_REFERER"];
+$actual_link = "http://".$_SERVER['HTTP_HOST'].parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+if ( strpos($referer, "yandex") ) :
+  $request = parse_url($referer, PHP_URL_QUERY);
+  parse_str($request, $params);
+  $query = $params['text'];
+endif;
+?>
+
+==================== SEND REQUEST TO BITRIX24 ====================
+
+<?php
+  $post = $_POST;
+
+  $phone     =   $_POST['phone'];
+  $email     =   $_POST['email'];
+
+  if (empty($email) && empty($phone)) {
+    $error = 1;
+  } else {
+    $url = '';
+    $name = explode(' ',$post['name']);
+    $data = array(
+      'LOGIN' =>'',
+      'PASSWORD' =>'',
+      'TITLE' =>'Заявка с сайта',
+      'NAME' => (string)@$name[1],
+      'LAST_NAME' =>(string)@$name[0],
+      'PHONE_MOBILE' =>$post['Phone'],
+      'EMAIL_HOME' =>$post['Email'],
+      'COMMENTS' =>$post['message'],
+
+      'UF_CRM_1423221111' =>$post['Url'],
+      'UF_CRM_1448639020' =>$post['PromoCode'],
+      'UF_CRM_1448637840' =>$post['TimeToCall'],
+      'UF_CRM_1466370358' =>$post['host'],
+
+      'UF_CRM_1466370559' =>$post['referer'],
+      'UF_CRM_1466370697' =>$post['campaign'],
+      'UF_CRM_1466370719' =>$post['term'],
+      'UF_CRM_1422604463' =>$post['source'],
+      'UF_CRM_1466370657' =>$post['search_query'],
+      'UF_CRM_1422604393' =>$post['Goal']
+
+    );
+    $res = file_get_contents($url.'?'.http_build_query($data));
+
+    $email_to  = 'office@lidkom.ru';
+    $headers   = "From: order@lidkom.ru";
+    $subject   = "Заявка с сайта Lidkom";
+
+    $message  = "Почта:    $email\r\nТелефон:  $phone\r\n";
+    mail($email_to, $subject, $message, $headers);
+
+    echo $res;
+  }
+?>
+
+========================= HIDDEN INPUT FIELDS FOR PAGE'S FORMS ====================
+
+<input type="hidden" name="search_query" value="<?php echo $query;?>">
+<input type="hidden" name="referer"      value="<?php echo $referer;?>">
+<input type="hidden" name="campaign"     value="" class="dynamic_inputs">
+<input type="hidden" name="term"         value="" class="dynamic_inputs">
+<input type="hidden" name="source"       value="" class="dynamic_inputs">
+<input type="hidden" name="goal"         value="НАЗВАНИЕ КНОПКИ">
+<input type="hidden" name="url"          value="<?php echo $actual_link ?>">
+
+========================= SCRIPTS ==================================
+
+<script>
+  $(document).ready(function() {
+    $('.dynamic_inputs').each(function() { $(this).val(findUtms(this.getAttribute("name"))) });
+
+    $('.form').submit(function(event) {
+      sendAjaxForm(this, event);
+    });
+  }
+
+  function findUtms(value) {
+    var querystring = document.location.search;
+    if (!querystring) {
+      return undefined;
+    }
+    // remove leading ?
+    querystring = querystring.substring(1);
+    querystring = querystring.split('&');
+
+    var utms = {};
+    for (var i = 0; i < querystring.length; i++) {
+      var part = querystring[i];
+      if (part && part.length > 4 && part.startsWith("utm_")) {
+        var keyValue = part.split("=");
+        if (keyValue.length > 1) {
+          utms[keyValue[0].substring(4)] = keyValue[1];
+        }
+      }
+    }
+    return utms[value]
+  }
+
+  function sendAjaxForm(form, event) {
+    var fields = form.querySelectorAll('input, textarea')
+
+    var formHasError =  Array.prototype.reduce.call(fields, function(invalidCount, currentItem) {
+      if (currentItem.matches(':invalid')) invalidCount++;
+    }, 0);
+
+    if (formHasError) {
+      return true;
+    } else {
+      event.preventDefault();
+
+      var formData = new FormData(form);
+      var xhr = new XMLHttpRequest();
+
+      xhr.open('POST', 'send.php');
+      xhr.onreadystatechange = function() {
+        if ((xhr.readyState == 4) && (xhr.status == 200)) {
+          data = xhr.responseText;
+          form.outerHTML = '<h3 style="color: #000; text-align: center;">Спасибо, ваша заявка отправлена</h3><p style="text-align: center">Наши менеджеры свяжутся с вами в течение дня</p>';
+        }
+      }
+      xhr.send(formData);
+
+      return false;
+    }
+  }
+</script>
+
