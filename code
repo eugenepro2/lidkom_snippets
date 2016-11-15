@@ -73,6 +73,12 @@ endif;
 <script>
   $(document).ready(function() {
     $('.dynamic_inputs').each(function() { $(this).val(findUtms(this.getAttribute("name"))) });
+    //Нативный
+    var inputs = document.getElementsByClassName('dynamic_inputs');
+
+    for (var i = 0; i < inputs.length; i++) {
+        inputs[i].value = findUtms(inputs[i].getAttribute("name"));
+    }
 
     $('.form').submit(function(event) {
       sendAjaxForm(this, event);
